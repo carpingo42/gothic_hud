@@ -1,19 +1,18 @@
 package net.gothic.hud;
 
-import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 
 /** Ornate frame that extends beyond the vanilla inventory background, with candle flames and dripping blood. */
-final class InventoryDecor {
+public final class InventoryDecor {
     private static final Identifier FRAME = GothicHudClient.id("textures/gui/inventory_frame.png");
     private static final int[] DRIP_X = { 34, 58, 71, 96, 120, 146, 170, 190, 213 };
 
     private InventoryDecor() {}
 
-    static void draw(GuiGraphicsExtractor g, int left, int top) {
-        long now = Util.getMillis();
+    public static void draw(GuiGraphicsExtractor g, int left, int top) {
+        long now = System.currentTimeMillis();
         int fx = left - 40, fy = top - 45;                // the 256x256 frame has a 176x166 transparent window
         g.blit(RenderPipelines.GUI_TEXTURED, FRAME, fx, fy, 0f, 0f, 256, 256, 256, 256);
         flame(g, fx + 23, fy + 176, now, 0.0);

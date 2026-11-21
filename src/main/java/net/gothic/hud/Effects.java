@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import net.minecraft.Util;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -68,7 +67,7 @@ public final class Effects {
         chance *= 1.0 + lowHealth * 1.5;
         if (RNG.nextDouble() < chance) startTwitch();
 
-        long now = Util.getMillis();
+        long now = System.currentTimeMillis();
         SPLASHES.removeIf(s -> now - s.start > s.dur);
     }
 
@@ -76,7 +75,7 @@ public final class Effects {
         float volume = running ? 0.9f : 0.6f;
         float pitch = 0.92f + RNG.nextFloat() * 0.16f;
         mc.getSoundManager().play(SimpleSoundInstance.forUI(HEARTBEAT, pitch, volume));
-        beatAt = Util.getMillis();
+        beatAt = System.currentTimeMillis();
         // random next moment: rare when calm, frequent when sprinting or hurt
         int interval = running ? 60 + RNG.nextInt(100) : 200 + RNG.nextInt(360);
         interval = (int) (interval * (1.0f - 0.5f * lowHealth));
@@ -85,13 +84,13 @@ public final class Effects {
     }
 
     private static void startTwitch() {
-        long now = Util.getMillis();
+        long now = System.currentTimeMillis();
         twitchUntil = now + 140 + RNG.nextInt(260);
         nextJitter = 0L;
     }
 
     private static void onHurt(float damage) {
-        long now = Util.getMillis();
+        long now = System.currentTimeMillis();
         Splash s = new Splash();
         s.start = now;
         s.dur = (long) (2200 + Math.min(1800f, damage * 220f));
@@ -116,7 +115,7 @@ public final class Effects {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         int w = g.guiWidth(), h = g.guiHeight();
-        long now = Util.getMillis();
+        long now = System.currentTimeMillis();
         drawVignette(g, w, h, now);
         drawBlood(g, w, h, now);
         drawWebs(g, w, h);
