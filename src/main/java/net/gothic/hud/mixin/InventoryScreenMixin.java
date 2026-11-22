@@ -2,9 +2,9 @@ package net.gothic.hud.mixin;
 
 import net.gothic.hud.InventoryDecor;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
@@ -13,13 +13,12 @@ import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(InventoryScreen.class)
 public abstract class InventoryScreenMixin {
-    @Shadow protected int leftPos;
-    @Shadow protected int topPos;
-
     /** Frame, candle flames and dripping blood around the inventory. */
     @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", at = @At("TAIL"), require = 0)
     private void gothic$decor(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        InventoryDecor.draw(graphics, this.leftPos, this.topPos);
+        // the inventory is centred: 176 x 166 (no field shadowing, it lives in a superclass)
+        Screen self = (Screen) (Object) this;
+        InventoryDecor.draw(graphics, (self.width - 176) / 2, (self.height - 166) / 2);
     }
 
     /*
