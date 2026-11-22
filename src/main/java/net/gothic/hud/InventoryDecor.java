@@ -7,14 +7,39 @@ import net.minecraft.resources.Identifier;
 /** Ornate frame that extends beyond the vanilla inventory background, with candle flames and dripping blood. */
 public final class InventoryDecor {
     private static final Identifier FRAME = GothicHudClient.id("textures/gui/inventory_frame.png");
+    private static final Identifier WEB_TL = GothicHudClient.id("textures/gui/web_tl.png");
+    private static final Identifier WEB_TR = GothicHudClient.id("textures/gui/web_tr.png");
+    private static final Identifier WEB_BL = GothicHudClient.id("textures/gui/web_bl.png");
+    private static final Identifier WEB_BR = GothicHudClient.id("textures/gui/web_br.png");
     private static final int[] DRIP_X = { 34, 58, 71, 96, 120, 146, 170, 190, 213 };
 
     private InventoryDecor() {}
+
+    /** Cobwebs in the corners of the whole screen, only while the inventory is open. */
+    public static void drawWebs(GuiGraphicsExtractor g, int w, int h) {
+        final int s = 96;
+        g.blit(RenderPipelines.GUI_TEXTURED, WEB_TL, 0, 0, 0f, 0f, s, s, s, s);
+        g.blit(RenderPipelines.GUI_TEXTURED, WEB_TR, w - s, 0, 0f, 0f, s, s, s, s);
+        g.blit(RenderPipelines.GUI_TEXTURED, WEB_BL, 0, h - s, 0f, 0f, s, s, s, s);
+        g.blit(RenderPipelines.GUI_TEXTURED, WEB_BR, w - s, h - s, 0f, 0f, s, s, s, s);
+    }
+
+    /** Stone plinth under the player bust: covers the part of the niche below the waist. */
+    private static void plinth(GuiGraphicsExtractor g, int left, int top) {
+        int x0 = left + 26, x1 = left + 76, y0 = top + 56, y1 = top + 77;
+        g.fill(x0, y0, x1, y1, 0xFF1E1E22);
+        g.fill(x0, y0, x1, y0 + 2, 0xFF5E5E66);
+        g.fill(x0, y0 + 2, x1, y0 + 3, 0xFF121215);
+        for (int y = y0 + 7; y < y1; y += 7) g.fill(x0, y, x1, y + 1, 0xFF2A2A2F);
+        g.fill(left + 50, top + 61, left + 52, top + 73, 0xFF9E926F);      // small cross
+        g.fill(left + 46, top + 64, left + 56, top + 66, 0xFF9E926F);
+    }
 
     public static void draw(GuiGraphicsExtractor g, int left, int top) {
         long now = System.currentTimeMillis();
         int fx = left - 40, fy = top - 45;                // the 256x256 frame has a 176x166 transparent window
         g.blit(RenderPipelines.GUI_TEXTURED, FRAME, fx, fy, 0f, 0f, 256, 256, 256, 256);
+        plinth(g, left, top);
         flame(g, fx + 23, fy + 176, now, 0.0);
         flame(g, fx + 231, fy + 176, now, 1.7);
         for (int i = 0; i < DRIP_X.length; i++) drip(g, fx + DRIP_X[i], fy + 5, fy + 40, now, i);

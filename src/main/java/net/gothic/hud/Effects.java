@@ -28,7 +28,8 @@ public final class Effects {
         long start, dur;
         int seed;
         float strength;
-        final List<float[]> blots = new ArrayList<>();   // {nx, ny, radius}
+        int corners;                                     // bit mask of the screen corners
+        final List<float[]> blots = new ArrayList<>();   // {corner, i, j, radius} in cells from the corner
     }
 
     private static final List<Splash> SPLASHES = new ArrayList<>();
@@ -96,13 +97,16 @@ public final class Effects {
         s.dur = (long) (2200 + Math.min(1800f, damage * 220f));
         s.seed = RNG.nextInt();
         s.strength = Mth.clamp(0.5f + damage / 12f, 0.5f, 1f);
-        int n = 6 + RNG.nextInt(5);
-        for (int i = 0; i < n; i++) {
-            int side = RNG.nextInt(4);
-            float t = RNG.nextFloat(), off = RNG.nextFloat() * 0.03f;
-            float nx = side == 2 ? off : side == 3 ? 1f - off : t;
-            float ny = side == 0 ? off : side == 1 ? 1f - off : t;
-            s.blots.add(new float[] { nx, ny, 0.10f + RNG.nextFloat() * 0.16f });
+        // blood only in the screen corners
+        int count = 2 + RNG.nextInt(3);
+        while (Integer.bitCount(s.corners) < count) s.corners |= 1 << RNG.nextInt(4);
+        for (int c = 0; c < 4; c++) {
+            if ((s.corners & (1 << c)) == 0) continue;
+            int blots = 1 + RNG.nextInt(2);
+            for (int k = 0; k < blots; k++) {
+                float r = (5f + RNG.nextFloat() * 5f) * (0.7f + 0.5f * s.strength);
+                s.blots.add(new float[] { c, RNG.nextFloat() * 3f, RNG.nextFloat() * 3f, r });
+            }
         }
         SPLASHES.add(s);
         if (SPLASHES.size() > 4) SPLASHES.remove(0);
@@ -118,7 +122,6 @@ public final class Effects {
         long now = System.currentTimeMillis();
         drawVignette(g, w, h, now);
         drawBlood(g, w, h, now);
-        drawWebs(g, w, h);
     }
 
     private static void drawVignette(GuiGraphicsExtractor g, int w, int h, long now) {
@@ -161,56 +164,43 @@ public final class Effects {
     }
 
     private static void drawBlood(GuiGraphicsExtractor g, int w, int h, long now) {
-        final int cell = 3;                                   // one blood "pixel" = 3 GUI units
+        final int cell = 6;                                   // chunky pixels, few of them
+        final int n = 16;                                     // corner square, in cells
         int cols = (w + cell - 1) / cell, rows = (h + cell - 1) / cell;
         for (Splash s : SPLASHES) {
             float age = (now - s.start) / (float) s.dur;
             if (age < 0f || age >= 1f) continue;
             float life = 1f - age;
-            int depth = Math.max(3, (int) (s.strength * 16));
-            for (int cy = 0; cy < rows; cy++) {
-                int ey = Math.min(cy, rows - 1 - cy);
-                if (ey < depth) {
-                    for (int cx = 0; cx < cols; cx++) bloodCell(g, s, cx, cy, cols, rows, depth, life, cell, w, h);
-                } else {
-                    for (int cx = 0; cx < depth; cx++) bloodCell(g, s, cx, cy, cols, rows, depth, life, cell, w, h);
-                    for (int cx = cols - depth; cx < cols; cx++) bloodCell(g, s, cx, cy, cols, rows, depth, life, cell, w, h);
+            for (int corner = 0; corner < 4; corner++) {
+                if ((s.corners & (1 << corner)) == 0) continue;
+                boolean right = (corner & 1) != 0, bottom = (corner & 2) != 0;
+                for (int j = 0; j < n; j++) {
+                    for (int i = 0; i < n; i++) {
+                        int cx = right ? cols - 1 - i : i, cy = bottom ? rows - 1 - j : j;
+                        bloodCell(g, s, corner, i, j, cx, cy, life, cell, w, h);
+                    }
                 }
             }
         }
     }
 
-    private static void bloodCell(GuiGraphicsExtractor g, Splash s, int cx, int cy, int cols, int rows,
-                                  int depth, float life, int cell, int w, int h) {
-        int dEdge = Math.min(Math.min(cx, cols - 1 - cx), Math.min(cy, rows - 1 - cy));
-        float edgeF = 1f - dEdge / (float) depth;
-        float rnd = hash(cx, cy, s.seed);
-        float px = cx * cell / (float) h, py = cy * cell / (float) h;
-        float aspect = w / (float) h;
+    private static void bloodCell(GuiGraphicsExtractor g, Splash s, int corner, int i, int j, int cx, int cy,
+                                  float life, int cell, int w, int h) {
         float best = 0f;
         for (float[] b : s.blots) {
-            float dx = px - b[0] * aspect, dy = py - b[1];
-            float v = 1f - (float) Math.sqrt(dx * dx + dy * dy) / b[2];
+            if ((int) b[0] != corner) continue;
+            float dx = i - b[1], dy = j - b[2];
+            float v = 1f - (float) Math.sqrt(dx * dx + dy * dy) / b[3];
             if (v > best) best = v;
         }
-        float coverage = best * 0.9f + edgeF * 0.35f;
-        float score = coverage * (0.55f + 0.9f * life) - rnd * 0.55f;
-        if (score < 0.08f) return;
-        float alpha = 0.30f + 0.45f * Math.min(1f, score * 1.6f);       // mostly translucent, like glass
-        if (hash(cx, cy, s.seed + 77) < 0.25f) alpha = Math.min(0.85f, alpha + 0.25f);
-        alpha *= Math.min(1f, life * 1.8f);
+        float rnd = hash(cx, cy, s.seed);
+        float score = best * (0.6f + 0.7f * life) - rnd * 0.45f;
+        if (score < 0.06f) return;
+        float alpha = (0.26f + 0.18f * Math.min(1f, score * 2f)) * Math.min(1f, life * 1.8f);   // always translucent
         int a = (int) (alpha * 255f);
         if (a <= 3) return;
-        int rgb = BLOOD[(int) (hash(cx, cy, s.seed + 13) * BLOOD.length) % BLOOD.length];
+        int rgb = hash(cx, cy, s.seed + 13) < 0.5f ? 0xB0141C : 0x8C0C14;
         int x0 = cx * cell, y0 = cy * cell;
         g.fill(x0, y0, Math.min(w, x0 + cell), Math.min(h, y0 + cell), (a << 24) | rgb);
-    }
-
-    private static void drawWebs(GuiGraphicsExtractor g, int w, int h) {
-        final int s = 96;
-        g.blit(RenderPipelines.GUI_TEXTURED, WEB_TL, 0, 0, 0f, 0f, s, s, s, s);
-        g.blit(RenderPipelines.GUI_TEXTURED, WEB_TR, w - s, 0, 0f, 0f, s, s, s, s);
-        g.blit(RenderPipelines.GUI_TEXTURED, WEB_BL, 0, h - s, 0f, 0f, s, s, s, s);
-        g.blit(RenderPipelines.GUI_TEXTURED, WEB_BR, w - s, h - s, 0f, 0f, s, s, s, s);
     }
 }

@@ -18,6 +18,7 @@ public abstract class InventoryScreenMixin {
     private void gothic$decor(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         // the inventory is centred: 176 x 166 (no field shadowing, it lives in a superclass)
         Screen self = (Screen) (Object) this;
+        InventoryDecor.drawWebs(graphics, self.width, self.height);
         InventoryDecor.draw(graphics, (self.width - 176) / 2, (self.height - 166) / 2);
     }
 
@@ -41,8 +42,10 @@ public abstract class InventoryScreenMixin {
         try {
             // (graphics, x1, y1, x2, y2, scale, yOffset, mouseX, mouseY, entity)
             if (args.size() == 10) {
-                args.set(5, 66);       // scale: 30 -> 66
-                args.set(6, 0.40f);    // lower the model so the box ends around the waist
+                int y2 = args.get(4);
+                args.set(4, y2 - 22);      // the box ends at the waist: the legs are cut off by the box itself
+                args.set(5, 46);           // scale: 30 -> 46 (smaller than before)
+                args.set(6, 0.51f);        // keeps the head near the top of the box
             }
         } catch (Throwable ignored) {
             // wrong argument layout in this version: leave the vanilla player untouched
